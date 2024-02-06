@@ -8,13 +8,14 @@ import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
+import { UserService } from '@/services/user.service';
 
 /**
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
-	const user = Container.get(UserRepository).create({
+	const user = await Container.get(UserService).create({
 		email: email ?? randomEmail(),
 		password: await hash(password ?? randomValidPassword(), 10),
 		firstName: firstName ?? randomName(),
@@ -85,7 +86,7 @@ export async function createUserShell(role: GlobalRole): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return await Container.get(UserRepository).save(shell);
+	return await Container.get(UserService).create(shell);
 }
 
 /**
@@ -98,15 +99,16 @@ export async function createManyUsers(
 	let { email, password, firstName, lastName, role, ...rest } = attributes;
 
 	const users = await Promise.all(
-		[...Array(amount)].map(async () =>
-			Container.get(UserRepository).create({
-				email: email ?? randomEmail(),
-				password: await hash(password ?? randomValidPassword(), 10),
-				firstName: firstName ?? randomName(),
-				lastName: lastName ?? randomName(),
-				role: role ?? 'global:member',
-				...rest,
-			}),
+		[...Array(amount)].map(
+			async () =>
+				await Container.get(UserService).create({
+					email: email ?? randomEmail(),
+					password: await hash(password ?? randomValidPassword(), 10),
+					firstName: firstName ?? randomName(),
+					lastName: lastName ?? randomName(),
+					role: role ?? 'global:member',
+					...rest,
+				}),
 		),
 	);
 
